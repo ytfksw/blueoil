@@ -95,7 +95,7 @@ class YoloV2(BaseNetwork):
         assert self.image_size[1] % 32 == 0
 
         if self.is_dynamic_image_size:
-            self.image_size = tf.tuple(tensors=[
+            self.image_size = tf.tuple([
                 tf.constant(self.image_size[0], dtype=tf.int32), tf.constant(self.image_size[1], dtype=tf.int32)
             ])
 
@@ -103,7 +103,7 @@ class YoloV2(BaseNetwork):
             # Number of cell is the spatial dimension of the final convolutional features.
             image_size0 = self.image_size[0] / 32
             image_size1 = self.image_size[1] / 32
-            self.num_cell = tf.tuple(tensors=[tf.cast(image_size0, tf.int32), tf.cast(image_size1, tf.int32)])
+            self.num_cell = tf.tuple([tf.cast(image_size0, tf.int32), tf.cast(image_size1, tf.int32)])
         else:
             self.num_cell = self.image_size[0] // 32, self.image_size[1] // 32
 
@@ -248,13 +248,13 @@ class YoloV2(BaseNetwork):
 
                     for image_index, detect_boxes_in_the_image in enumerate(detect_boxes):
                         mask = tf.equal(detect_boxes_in_the_image[:, 4], class_id)
-                        per_class_detect_boxes_in_the_image = tf.boolean_mask(tensor=detect_boxes_in_the_image, mask=mask)
+                        per_class_detect_boxes_in_the_image = tf.boolean_mask(detect_boxes_in_the_image, mask)
 
                         labels_in_the_image = labels[image_index, :, :]
                         mask = tf.equal(labels_in_the_image[:, 4], class_id)
-                        labels_in_the_image = tf.boolean_mask(tensor=labels_in_the_image, mask=mask)
+                        labels_in_the_image = tf.boolean_mask(labels_in_the_image, mask)
 
-                        num_gt_boxes = tf.shape(input=labels_in_the_image)[0]
+                        num_gt_boxes = tf.shape(labels_in_the_image)[0]
 
                         tp, fp, score = tf.compat.v1.py_func(
                             tp_fp_in_the_image,
@@ -446,7 +446,7 @@ class YoloV2(BaseNetwork):
     def _predictions(self, output):
         with tf.compat.v1.name_scope("predictions"):
             if self.data_format == "NCHW":
-                output = tf.transpose(a=output, perm=[0, 2, 3, 1])
+                output = tf.transpose(output, perm=[0, 2, 3, 1])
 
             predict_classes, predict_confidence, predict_boxes = self._split_predictions(output)
 
@@ -580,7 +580,7 @@ class YoloV2(BaseNetwork):
 
             predicted_per_batch = formatted_output[i]
             score_mask = predicted_per_batch[:, 5] > threshold
-            result = tf.boolean_mask(tensor=predicted_per_batch, mask=score_mask)
+            result = tf.boolean_mask(predicted_per_batch, score_mask)
 
             results.append(result)
 
@@ -611,7 +611,7 @@ class YoloV2(BaseNetwork):
                 nms_per_batch = []
                 for class_id in range(len(self.classes)):
                     class_mask = tf.equal(predicted_per_batch[:, 4], class_id)
-                    class_masked = tf.boolean_mask(tensor=predicted_per_batch, mask=class_mask)
+                    class_masked = tf.boolean_mask(predicted_per_batch, class_mask)
 
                     nms_indices = tf.image.non_max_suppression(
                         format_XYWH_to_YX(class_masked[:, 0:4], axis=1),
@@ -670,17 +670,17 @@ class YoloV2(BaseNetwork):
             if darknet_original:
                 # TODO(wakisaka): You can use only data_format == "NHWC", yet.
                 assert data_format == "NHWC"
-                input_shape = tf.shape(input=inputs)
+                input_shape = tf.shape(inputs)
                 # channel shape use static.
                 b, h, w, c = input_shape[0], input_shape[1], input_shape[2], inputs.get_shape().as_list()[3]
                 output_h = h // stride
                 output_w = w // stride
                 output_c = c * stride * stride
-                transpose_tensor = tf.transpose(a=inputs, perm=[0, 3, 1, 2])
+                transpose_tensor = tf.transpose(inputs, perm=[0, 3, 1, 2])
                 reshape_tensor = tf.reshape(transpose_tensor, [b, (c // (stride * stride)), h, stride, w, stride])
-                transpose_tensor = tf.transpose(a=reshape_tensor, perm=[0, 3, 5, 1, 2, 4])
+                transpose_tensor = tf.transpose(reshape_tensor, perm=[0, 3, 5, 1, 2, 4])
                 reshape_tensor = tf.reshape(transpose_tensor, [b, output_c, output_h, output_w])
-                transpose_tensor = tf.transpose(a=reshape_tensor, perm=[0, 2, 3, 1])
+                transpose_tensor = tf.transpose(reshape_tensor, perm=[0, 2, 3, 1])
                 outputs = tf.reshape(transpose_tensor, [b, output_h, output_w, output_c])
 
                 return outputs
@@ -690,7 +690,7 @@ class YoloV2(BaseNetwork):
                 # Currently, I didn't try to space_to_depth with images_placeholder `None` shape as dynamic image.
                 if use_space_to_depth:
 
-                    outputs = tf.compat.v1.space_to_depth(input=inputs, block_size=stride, data_format=data_format)
+                    outputs = tf.compat.v1.space_to_depth(inputs, stride, data_format=data_format)
                     return outputs
 
                 else:
@@ -1411,7 +1411,7 @@ class YoloV2Loss:
             if self.is_debug:
                 predict_boxes = tf.compat.v1.Print(
                     predict_boxes,
-                    [tf.shape(input=predict_boxes), predict_boxes],
+                    [tf.shape(predict_boxes), predict_boxes],
                     message="predict_boxes:",
                     summarize=20000)
 
@@ -1421,7 +1421,7 @@ class YoloV2Loss:
             if self.is_debug:
                 best_iou = tf.compat.v1.Print(
                     best_iou,
-                    [tf.shape(input=best_iou), best_iou],
+                    [tf.shape(best_iou), best_iou],
                     message="iou:",
                     summarize=20000)
 
@@ -1433,7 +1433,7 @@ class YoloV2Loss:
             if self.is_debug:
                 iou_mask = tf.compat.v1.Print(
                     iou_mask,
-                    [tf.shape(input=iou_mask), iou_mask],
+                    [tf.shape(iou_mask), iou_mask],
                     message="iou_mask:",
                     summarize=20000)
 
@@ -1457,7 +1457,7 @@ class YoloV2Loss:
             if self.is_debug:
                 no_object_mask = tf.compat.v1.Print(
                     no_object_mask,
-                    [tf.shape(input=no_object_mask), no_object_mask],
+                    [tf.shape(no_object_mask), no_object_mask],
                     message="no_object_mask:",
                     summarize=20000)
 
@@ -1468,15 +1468,15 @@ class YoloV2Loss:
             if self.is_debug:
                 truth_boxes = tf.compat.v1.Print(
                     truth_boxes,
-                    [tf.shape(input=truth_boxes), truth_boxes],
+                    [tf.shape(truth_boxes), truth_boxes],
                     message="truth_boxes:",
                     summarize=20000)
 
             # class_loss
             if self.use_cross_entropy_loss:
                 class_loss = tf.reduce_mean(
-                    input_tensor=- tf.reduce_sum(
-                        input_tensor=object_mask * (truth_classes * tf.math.log(tf.clip_by_value(predict_classes, 1e-10, 1.0))),
+                    - tf.reduce_sum(
+                        object_mask * (truth_classes * tf.math.log(tf.clip_by_value(predict_classes, 1e-10, 1.0))),
                         axis=[1, 2, 3, 4]
                     ),
                     name='class_loss'
@@ -1484,8 +1484,8 @@ class YoloV2Loss:
 
             else:
                 class_loss = tf.reduce_mean(
-                    input_tensor=tf.reduce_sum(
-                        input_tensor=object_mask * tf.square(predict_classes - truth_classes),
+                    tf.reduce_sum(
+                        object_mask * tf.square(predict_classes - truth_classes),
                         axis=[1, 2, 3, 4]
                     ),
                     name='class_loss'
@@ -1493,22 +1493,22 @@ class YoloV2Loss:
 
             # object_loss
             object_loss = tf.reduce_mean(
-                input_tensor=tf.reduce_sum(
-                    input_tensor=object_mask * tf.square(predict_confidence - truth_confidence),
+                tf.reduce_sum(
+                    object_mask * tf.square(predict_confidence - truth_confidence),
                     axis=[1, 2, 3, 4]),
                 name='object_loss') * self.object_scale
 
             # no_object_response_mask_loss
             no_object_loss = tf.reduce_mean(
-                input_tensor=tf.reduce_sum(
-                    input_tensor=no_object_mask * tf.square(0 - predict_confidence),
+                tf.reduce_sum(
+                    no_object_mask * tf.square(0 - predict_confidence),
                     axis=[1, 2, 3, 4]),
                 name='no_object_loss') * self.no_object_scale
 
             # coordinate_loss
             coordinate_loss = tf.reduce_mean(
-                input_tensor=tf.reduce_sum(
-                    input_tensor=coordinate_mask * tf.square(resized_predict_boxes - truth_boxes),
+                tf.reduce_sum(
+                    coordinate_mask * tf.square(resized_predict_boxes - truth_boxes),
                     axis=[1, 2, 3, 4]),
                 name='coordinate_loss') * self.coordinate_scale
 
@@ -1545,7 +1545,7 @@ def summary_boxes(tag, images, boxes, image_size, max_outputs=3, data_format="NH
     with tf.compat.v1.name_scope("summary_boxes"):
 
         if data_format == "NCHW":
-            images = tf.transpose(a=images, perm=[0, 2, 3, 1])
+            images = tf.transpose(images, perm=[0, 2, 3, 1])
 
         boxes = tf.stack([
             boxes[:, :, 0] / tf.cast(image_size[0], tf.float32),
