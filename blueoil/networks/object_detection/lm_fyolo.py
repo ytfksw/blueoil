@@ -31,7 +31,7 @@ class LMFYolo(YoloV2):
     """
 
     def train(self, loss, optimizer, var_list=[]):
-        with tf.name_scope("train"):
+        with tf.compat.v1.name_scope("train"):
             if var_list == []:
                 var_list = tf.compat.v1.trainable_variables()
 
@@ -133,7 +133,7 @@ class LMFYolo(YoloV2):
 
             predict_classes, predict_confidence, predict_boxes = self._predictions(self.block_last)
 
-            with tf.name_scope("convert_boxes_space_from_yolo_to_real"):
+            with tf.compat.v1.name_scope("convert_boxes_space_from_yolo_to_real"):
                 predict_boxes = self.convert_boxes_space_from_yolo_to_real(predict_boxes)
 
             output = self._concat_predictions(predict_classes, predict_confidence, predict_boxes)

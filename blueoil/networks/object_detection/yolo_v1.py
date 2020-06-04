@@ -102,15 +102,15 @@ class YoloV1(BaseNetwork):
 
                 for image_index, predict_boxes_in_the_image in enumerate(predict_boxes):
                     mask = tf.equal(predict_boxes_in_the_image[:, 4], class_id)
-                    predict_boxes_in_the_image = tf.boolean_mask(predict_boxes_in_the_image, mask)
+                    predict_boxes_in_the_image = tf.boolean_mask(tensor=predict_boxes_in_the_image, mask=mask)
 
                     labels_in_the_image = labels[image_index, :, :]
                     mask = tf.equal(labels_in_the_image[:, 4], class_id)
-                    labels_in_the_image = tf.boolean_mask(labels_in_the_image, mask)
+                    labels_in_the_image = tf.boolean_mask(tensor=labels_in_the_image, mask=mask)
 
-                    num_gt_boxes = tf.shape(labels_in_the_image)[0]
+                    num_gt_boxes = tf.shape(input=labels_in_the_image)[0]
 
-                    tp, fp, score = tf.py_func(
+                    tp, fp, score = tf.compat.v1.py_func(
                         tp_fp_in_the_image,
                         [predict_boxes_in_the_image, labels_in_the_image, overlap_thresh],
                         [tf.float32, tf.float32, tf.float32],
@@ -285,13 +285,13 @@ class YoloV1(BaseNetwork):
         predict_boxes shape is [num_predicted_boxes, 6(x, y, w, h, class_id, probability)].
         python list lenght is batch size.
         """
-        with tf.name_scope("post_process"):
+        with tf.compat.v1.name_scope("post_process"):
             predict_boxes = self.convert_boxes_space_from_yolo_to_real(predict_boxes)
 
             if self.is_debug:
-                predict_classes = tf.Print(
+                predict_classes = tf.compat.v1.Print(
                     predict_classes,
-                    [tf.shape(predict_classes), predict_classes],
+                    [tf.shape(input=predict_classes), predict_classes],
                     message="predict_classes:",
                     summarize=2000)
 
@@ -301,32 +301,32 @@ class YoloV1(BaseNetwork):
             mask = predict_probability > threshold
 
             if self.is_debug:
-                mask = tf.Print(
+                mask = tf.compat.v1.Print(
                     mask,
-                    [tf.shape(mask), mask],
+                    [tf.shape(input=mask), mask],
                     message="mask:",
                     summarize=2000)
 
             # box_mask: shape is [batch_size, cell_size, cell_size, boxes_per_cell]
-            box_mask = tf.reduce_any(mask, axis=4)
+            box_mask = tf.reduce_any(input_tensor=mask, axis=4)
 
-            max_predict_classes = tf.reduce_max(predict_classes, axis=3)
+            max_predict_classes = tf.reduce_max(input_tensor=predict_classes, axis=3)
             max_predict_classes = tf.reshape(
                 max_predict_classes, [self.batch_size, self.cell_size, self.cell_size, 1]
             )
             max_predict_classes = tf.tile(max_predict_classes, [1, 1, 1, self.boxes_per_cell])
 
             # argmax_predict_classes be:  [batch_size, cell_size, cell_size, self.boxes_per_cell]
-            argmax_predict_classes = tf.argmax(predict_classes, axis=3)
+            argmax_predict_classes = tf.argmax(input=predict_classes, axis=3)
             argmax_predict_classes = tf.reshape(
                 argmax_predict_classes, [self.batch_size, self.cell_size, self.cell_size, 1]
             )
             argmax_predict_classes = tf.tile(argmax_predict_classes, [1, 1, 1, self.boxes_per_cell])
 
             if self.is_debug:
-                argmax_predict_classes = tf.Print(
+                argmax_predict_classes = tf.compat.v1.Print(
                     argmax_predict_classes,
-                    [tf.shape(argmax_predict_classes), argmax_predict_classes],
+                    [tf.shape(input=argmax_predict_classes), argmax_predict_classes],
                     message="argmax_predict_classes:",
                     summarize=2000)
 
@@ -336,33 +336,33 @@ class YoloV1(BaseNetwork):
                 predict_boxes_by_batch = predict_boxes[i, :, :, :, :]
 
                 # masked_boxes: [?, 4]
-                masked_boxes = tf.boolean_mask(predict_boxes_by_batch, box_mask_by_batch)
+                masked_boxes = tf.boolean_mask(tensor=predict_boxes_by_batch, mask=box_mask_by_batch)
 
                 if self.is_debug:
-                    masked_boxes = tf.Print(
+                    masked_boxes = tf.compat.v1.Print(
                         masked_boxes,
-                        [i, tf.shape(masked_boxes), masked_boxes],
+                        [i, tf.shape(input=masked_boxes), masked_boxes],
                         message="predicted_masked_boxes:",
                         summarize=2000)
 
                 predict_classes_by_batch = argmax_predict_classes[i, :, :, :]
-                masked_classes = tf.boolean_mask(predict_classes_by_batch, box_mask_by_batch)
+                masked_classes = tf.boolean_mask(tensor=predict_classes_by_batch, mask=box_mask_by_batch)
                 if self.is_debug:
-                    masked_classes = tf.Print(
+                    masked_classes = tf.compat.v1.Print(
                         masked_classes,
-                        [i, tf.shape(masked_classes), masked_classes],
+                        [i, tf.shape(input=masked_classes), masked_classes],
                         message="masked_classes:",
                         summarize=2000)
 
                 predict_classes_probability_by_batch = max_predict_classes[i, :, :, :]
                 masked_class_probability = tf.boolean_mask(
-                    predict_classes_probability_by_batch, box_mask_by_batch
+                    tensor=predict_classes_probability_by_batch, mask=box_mask_by_batch
                 )
 
                 if self.is_debug:
-                    masked_class_probability = tf.Print(
+                    masked_class_probability = tf.compat.v1.Print(
                         masked_class_probability,
-                        [i, tf.shape(masked_class_probability), masked_class_probability],
+                        [i, tf.shape(input=masked_class_probability), masked_class_probability],
                         message="masked_class_probability:",
                         summarize=2000)
 
@@ -393,7 +393,7 @@ class YoloV1(BaseNetwork):
         """
         predict_boxes = self.convert_boxes_space_from_yolo_to_real(predict_boxes)
 
-        with tf.name_scope("raw_predict_boxes"):
+        with tf.compat.v1.name_scope("raw_predict_boxes"):
 
             resized_predict_boxes_for_summary = tf.reshape(predict_boxes, [self.batch_size, -1, 4])
             summary_boxes(
@@ -402,7 +402,7 @@ class YoloV1(BaseNetwork):
                 self.image_size,
             )
 
-        with tf.name_scope("predict_boxes"):
+        with tf.compat.v1.name_scope("predict_boxes"):
             # [batch_size, cell_size, cell_size, boxes_per_cell, num_classes]
             predict_probability = tf.expand_dims(predict_confidence, 4) * tf.expand_dims(predict_classes, 3)
 
@@ -411,12 +411,12 @@ class YoloV1(BaseNetwork):
             mask = predict_probability > threshold
 
             # shape is [batch_size, cell_size, cell_size, boxes_per_cell]
-            box_mask = tf.reduce_any(mask, axis=4)
+            box_mask = tf.reduce_any(input_tensor=mask, axis=4)
 
             for i in range(self.batch_size):
                 box_mask_by_batch = box_mask[i, :, :, :]
                 predict_boxes_by_batch = predict_boxes[i, :, :, :, :]
-                masked_boxes = tf.boolean_mask(predict_boxes_by_batch, box_mask_by_batch)
+                masked_boxes = tf.boolean_mask(tensor=predict_boxes_by_batch, mask=box_mask_by_batch)
 
                 image = tf.expand_dims(self.images[i, :, :, :], 0)
                 masked_boxes = tf.expand_dims(masked_boxes, 0)
@@ -437,7 +437,7 @@ class YoloV1(BaseNetwork):
         """
         gt_boxes = self.convert_gt_boxes_xywh_to_cxcywh(gt_boxes)
 
-        with tf.name_scope("gt_boxes"):
+        with tf.compat.v1.name_scope("gt_boxes"):
             summary_boxes(
                 "gt_boxes",
                 self.images,
@@ -457,7 +457,7 @@ class YoloV1(BaseNetwork):
 
     def base(self, images, is_training):
         self.images = images
-        keep_prob = tf.cond(is_training, lambda: tf.constant(0.5), lambda: tf.constant(1.0))
+        keep_prob = tf.cond(pred=is_training, true_fn=lambda: tf.constant(0.5), false_fn=lambda: tf.constant(1.0))
 
         self.conv_1 = conv2d("conv_1", images, filters=64, kernel_size=7, strides=2,
                              activation=self.leaky_relu)
@@ -516,7 +516,7 @@ class YoloV1(BaseNetwork):
         self.fc_30 = fully_connected("fc_30", self.fc_29, filters=4096,
                                      activation=self.leaky_relu)
 
-        self.dropout_31 = tf.nn.dropout(self.fc_30, keep_prob)
+        self.dropout_31 = tf.nn.dropout(self.fc_30, 1 - (keep_prob))
 
         output_size = (self.cell_size * self.cell_size) * (self.num_classes + self.boxes_per_cell * 5)
         self.fc_32 = fully_connected("fc_32", self.dropout_31, filters=output_size, activation=None)
@@ -613,7 +613,7 @@ class YoloV1Loss:
         # exclude dummy. class id `-1` is dummy.
         gt_mask = tf.not_equal(gt_boxes[:, 4], -1)
 
-        result = i < tf.reduce_sum(tf.cast(gt_mask, tf.int32))
+        result = i < tf.reduce_sum(input_tensor=tf.cast(gt_mask, tf.int32))
 
         return result
 
@@ -644,11 +644,11 @@ class YoloV1Loss:
                 old_box = cell_gt_box[y, x, :]
                 # If gt_boxes is in this [y, x] cell, the cell_gt_boxes is assigned gt_boxes coordinate,
                 # else is assigned old box coordinate.
-                box = tf.where(condition, gt_boxes[i, :], old_box)
+                box = tf.compat.v1.where(condition, gt_boxes[i, :], old_box)
 
                 # If gt_boxes is in this [y, x] cell, the cell`s object_mask is assigned 1.0(True),
                 # else is assigned old object_mask.
-                mask = tf.where(condition, 1.0, object_mask[y, x, 0])
+                mask = tf.compat.v1.where(condition, 1.0, object_mask[y, x, 0])
 
                 boxes.append(box)
                 mask_list.append(mask)
@@ -678,9 +678,9 @@ class YoloV1Loss:
             object_mask = tf.zeros([self.cell_size, self.cell_size, 1])
 
             _, _, result_cell_gt_box, result_object_mask = tf.while_loop(
-                self._gt_boxes_to_cell_loop_cond,
-                self._gt_boxes_to_cell_loop_body,
-                [i, gt_boxes, cell_gt_box, object_mask]
+                cond=self._gt_boxes_to_cell_loop_cond,
+                body=self._gt_boxes_to_cell_loop_body,
+                loop_vars=[i, gt_boxes, cell_gt_box, object_mask]
             )
 
             cell_gt_boxes.append(result_cell_gt_box)
@@ -700,7 +700,7 @@ class YoloV1Loss:
         predict_boxes: [batch_size, cell_size, cell_size, boxes_per_cell, 4(center_x, center_y, w, h)]
         gt_boxes: ground truth boxes 3D tensor. [batch_size, max_num_boxes, 4(center_x, center_y, w, h)].
         """
-        with tf.name_scope("loss"):
+        with tf.compat.v1.name_scope("loss"):
             cell_gt_boxes, object_mask = self._gt_boxes_to_cell(gt_boxes)
 
             # for class loss
@@ -721,13 +721,13 @@ class YoloV1Loss:
             iou = self._iou(resized_predict_boxes, reshaped_gt_boxes)
 
             # object_response_mask: [batch_size, cell_size, cell_size, boxes_per_cell]
-            object_response_mask = tf.reduce_max(iou, 3, keep_dims=True)
+            object_response_mask = tf.reduce_max(input_tensor=iou, axis=3, keepdims=True)
             object_response_mask = tf.cast((iou >= object_response_mask), tf.float32) * object_mask
 
             if self.is_debug:
-                object_response_mask = tf.Print(
+                object_response_mask = tf.compat.v1.Print(
                     object_response_mask,
-                    [tf.shape(object_response_mask), object_response_mask],
+                    [tf.shape(input=object_response_mask), object_response_mask],
                     message="object_response_mask:",
                     summarize=20000)
 
@@ -735,18 +735,18 @@ class YoloV1Loss:
             no_object_response_mask = 1.0 - object_response_mask
 
             if self.is_debug:
-                no_object_response_mask = tf.Print(
+                no_object_response_mask = tf.compat.v1.Print(
                     no_object_response_mask,
-                    [tf.shape(no_object_response_mask), no_object_response_mask],
+                    [tf.shape(input=no_object_response_mask), no_object_response_mask],
                     message="no_object_response_mask:",
                     summarize=20000)
 
             truth_boxes = self.convert_boxes_space_from_real_to_yolo(reshaped_gt_boxes)
 
             if self.is_debug:
-                truth_boxes = tf.Print(
+                truth_boxes = tf.compat.v1.Print(
                     truth_boxes,
-                    [tf.shape(truth_boxes), truth_boxes],
+                    [tf.shape(input=truth_boxes), truth_boxes],
                     message="truth_boxes:",
                     summarize=20000)
 
@@ -754,16 +754,16 @@ class YoloV1Loss:
             coordinate_mask = tf.expand_dims(object_response_mask, 4)
 
             if self.is_debug:
-                coordinate_mask = tf.Print(
+                coordinate_mask = tf.compat.v1.Print(
                     coordinate_mask,
-                    [tf.shape(coordinate_mask), coordinate_mask],
+                    [tf.shape(input=coordinate_mask), coordinate_mask],
                     message="coordinate_mask:",
                     summarize=20000)
 
             # class_loss
             class_loss = tf.reduce_mean(
-                tf.reduce_sum(
-                    tf.square(object_mask * (predict_classes - truth_classes)),
+                input_tensor=tf.reduce_sum(
+                    input_tensor=tf.square(object_mask * (predict_classes - truth_classes)),
                     axis=[1, 2, 3]
                 ),
                 name='class_loss'
@@ -771,22 +771,22 @@ class YoloV1Loss:
 
             # object_loss
             object_loss = tf.reduce_mean(
-                tf.reduce_sum(
-                    tf.square(object_response_mask * (predict_confidence - iou)),
+                input_tensor=tf.reduce_sum(
+                    input_tensor=tf.square(object_response_mask * (predict_confidence - iou)),
                     axis=[1, 2, 3]),
                 name='object_loss') * self.object_scale
 
             # no_object_response_mask_loss
             no_object_loss = tf.reduce_mean(
-                tf.reduce_sum(
-                    tf.square(no_object_response_mask * predict_confidence),
+                input_tensor=tf.reduce_sum(
+                    input_tensor=tf.square(no_object_response_mask * predict_confidence),
                     axis=[1, 2, 3]),
                 name='no_object_loss') * self.no_object_scale
 
             # coordinate_loss
             coordinate_loss = tf.reduce_mean(
-                tf.reduce_sum(
-                    tf.square(coordinate_mask * (predict_boxes - truth_boxes)),
+                input_tensor=tf.reduce_sum(
+                    input_tensor=tf.square(coordinate_mask * (predict_boxes - truth_boxes)),
                     axis=[1, 2, 3, 4]),
                 name='coordinate_loss') * self.coordinate_scale
 
@@ -809,7 +809,7 @@ def summary_boxes(tag, images, boxes, image_size, max_outputs=3):
     boxes: Tensor of boxes. assumed shape is [batch_size, num_boxes, 4(y1, x1, y2, x2)].
     image_size: python list image size [height, width].
     """
-    with tf.name_scope("summary_boxes"):
+    with tf.compat.v1.name_scope("summary_boxes"):
 
         boxes = tf.stack([
             boxes[:, :, 0] / image_size[0],
@@ -819,7 +819,7 @@ def summary_boxes(tag, images, boxes, image_size, max_outputs=3):
         ], axis=2)
 
         bb_images = tf.image.draw_bounding_boxes(images, boxes)
-        summary = tf.summary.image(tag, bb_images, max_outputs=max_outputs)
+        summary = tf.compat.v1.summary.image(tag, bb_images, max_outputs=max_outputs)
 
         return summary
 
@@ -831,7 +831,7 @@ def format_XYWH_to_CXCYWH(boxes, axis=1):
     boxes :a Tensor include boxes. [:, 4(x, y, w, h)]
     axis: which dimension of the inputs Tensor is boxes.
     """
-    with tf.name_scope('format_xywh_to_cxcywh'):
+    with tf.compat.v1.name_scope('format_xywh_to_cxcywh'):
         x, y, w, h = tf.split(axis=axis, num_or_size_splits=4, value=boxes)
 
         center_x = x + w / 2
@@ -847,7 +847,7 @@ def format_CXCYWH_to_XYWH(boxes, axis=1):
     boxes: A tensor include boxes. [:, 4(x, y, w, h)]
     axis: Which dimension of the inputs Tensor is boxes.
     """
-    with tf.name_scope('format_xywh_to_cxcywh'):
+    with tf.compat.v1.name_scope('format_xywh_to_cxcywh'):
         center_x, center_y, w, h = tf.split(axis=axis, num_or_size_splits=4, value=boxes)
 
         x = center_x - w / 2
@@ -863,7 +863,7 @@ def format_CXCYWH_to_YX(inputs, axis=1):
       inputs: a Tensor include boxes.
       axis: which dimension of the inputs Tensor is boxes.
     """
-    with tf.name_scope('format_xywh_to_yx'):
+    with tf.compat.v1.name_scope('format_xywh_to_yx'):
         center_x, center_y, w, h = tf.split(axis=axis, num_or_size_splits=4, value=inputs)
 
         x1 = center_x - (w / 2)
@@ -881,7 +881,7 @@ def format_XYWH_to_YX(inputs, axis=1):
       inputs: a Tensor include boxes.
       axis: which dimension of the inputs Tensor is boxes.
     """
-    with tf.name_scope('format_xywh_to_yx'):
+    with tf.compat.v1.name_scope('format_xywh_to_yx'):
         x, y, w, h = tf.split(axis=axis, num_or_size_splits=4, value=inputs)
 
         x1 = x
